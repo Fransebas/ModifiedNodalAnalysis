@@ -4,6 +4,7 @@ from tkinter import *
 from tkpanel import *
 import numpy as np
 from collections import deque
+import  Edge
 
 class Drawing():
 
@@ -36,7 +37,7 @@ class Node():
         self.inLine = []
         self.outLine = []
 
-
+        self.edges = []
 
         self.color = "#000000"
 
@@ -45,25 +46,6 @@ class Node():
         self.circle = Drawing.circle(self.p, self.r, self.color)
 
         self.setType(type)
-
-    """def draw(self):
-
-
-
-        pygame.draw.circle(screen, self.color, self.p, self.r, 0)
-
-        if self.highlight:
-            pygame.draw.circle(screen, pygame.Color(0,255,0), self.p, self.r+2, 2)
-            self.highlight = False # maybe move this
-
-
-        for node in self.adj:
-            pygame.draw.line(screen, pygame.Color(0,0,0), self.p, node.p)
-
-            v = (node.p[0] - self.p[0], node.p[1] - self.p[1])
-            rotated = pygame.transform.rotate(arrow, -math.degrees(math.atan2(v[1], v[0])) )
-            #p = ( node.p[0] - arrow_rect.width/2 ,  node.p[0] - arrow_rect.height/2)
-            screen.blit(rotated, node.p)"""
 
     def setType(self, type):
 
@@ -141,8 +123,8 @@ class Node():
 
     def delete(self, n):
         """
-        @type n: Node 
-        :param n: 
+        :param n: node to delete from self
+        :type n: Node
         :return: None
         """
 
@@ -156,11 +138,21 @@ class Node():
         for node in self.adj:
             if i == j: continue
             aux.append(node)
-            auxDict[n] = len(aux) - 1
+            auxDict[n] = j
             j += 1
 
         self.adj = aux
         self.auxDict = auxDict
+
+        def __eq__(self, b):
+            """
+            
+            :param self: self node
+            :param b: another node
+            :type b: Node 
+            :return: Boolean
+            """
+            return self.p == b.p
 
 class SubGraph():
 
@@ -173,7 +165,8 @@ class SubGraph():
         
         :param n: a node in the subgraph
         :type n: Node
-        :param outdegree: 
+        :param outdegree: number of edeges coming out of the node
+        :type outdegree: int
         :return: None
         """
 
@@ -220,10 +213,16 @@ class Graph():
         self.root = Tk()
         self.root.title = "Data"
 
-        self.panel = Panel(self.root, self.toLine, self.toRes, self.toVoltage, self.toGround, self.delete)
+        self.panel = Panel(self.root,
+                           self.toLine,
+                           self.toRes,
+                           self.toVoltage,
+                           self.toGround,
+                           self.delete,
+                           subGraphs=self.getSubGraphs)
 
         self.canvas = Canvas(self.root, width=width, height=height,relief='ridge',bd=1)
-        self.canvas.grid(row=0,column=2)
+        self.canvas.grid(row=0,column=1)
 
         Drawing.init(self.canvas)
 
@@ -231,23 +230,35 @@ class Graph():
         self.bindEvents()
 
     def getSubGraphs(self):
+        """ makes all the different graphs"""
+
+        self.subGraphs = []
         visited = {}
         queue = deque()
+
         for s in self.nodes:
+
             if s not in visited:
                 subGraph = SubGraph()
                 self.subGraphs.append(subGraph)
+            else:
+                continue
+
             queue.append(s)
 
             while len (queue) > 0:
+                outDegree = 0
                 node = queue.popleft()
 
                 for u in node.adj:
-                    queue.append(u)
+                    if u not in visited:
+                        outDegree += 1
+                        queue.append(u)
 
-                subGraph.addNode(node, len(node.adj))
-
+                subGraph.addNode(node, outDegree)
                 visited[node] = True
+
+        print ("The number of subgraphs are", len(self.subGraphs) )
 
 
     def toLine(self):
@@ -280,6 +291,19 @@ class Graph():
     def delete(self):
         if self.activeNode:
             self.activeNode.deleteMe()
+            newList = []
+            for node in self.nodes:
+                if node == self.activeNode:
+                    continue
+                newList.append(node)
+
+            self.nodes = newList
+
+            if len(self.nodes) > 0:
+                self.activeNode = self.nodes[-1]
+                self.panel.update(self.activeNode)
+            else:
+                self.activeNode = None
 
 
     def bindEvents(self):

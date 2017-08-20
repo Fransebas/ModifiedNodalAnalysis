@@ -2,7 +2,7 @@ from tkinter import *
 
 class Panel():
 
-    def __init__(self, root, line, res, voltage, ground, delete):
+    def __init__(self, root, line, res, voltage, ground, delete, subGraphs = None):
 
         ControlFrame = LabelFrame(root, text="Control Panel", relief=RIDGE)
         ControlFrame.grid(row=0, column=0)
@@ -70,6 +70,16 @@ class Panel():
         # end
 
         # end node info
+
+        MutltimeterFrame = LabelFrame(root, text="Multimeter", relief=RIDGE)
+        MutltimeterFrame.grid(row=0, column=2)
+
+        # Multimeter Frame
+
+        groundButton = Button(MutltimeterFrame, text="Make SubGraphs", command=subGraphs)
+        groundButton.grid(row=0, column=0)
+
+        # end Multimeter Frame
 
     def update(self, node):
 
