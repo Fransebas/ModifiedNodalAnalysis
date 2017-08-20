@@ -2,7 +2,8 @@ from graphics import *
 from grapher import *
 from tkinter import *
 from tkpanel import *
-import os
+import numpy as np
+from collections import deque
 
 class Drawing():
 
@@ -26,16 +27,16 @@ class Node():
     def __init__(self, x, y, type = "line"):
         self.p = (x,y)
         self.type = type
-        self.circle = None
         self.adj = []
         self.nodes = {}
         self.r = 10
         self.highlight = False
-
         self.inLineP = None # point of the line that enters
         self.outLineP = None # point of the line that goes out
         self.inLine = []
         self.outLine = []
+
+
 
         self.color = "#000000"
 
@@ -44,8 +45,6 @@ class Node():
         self.circle = Drawing.circle(self.p, self.r, self.color)
 
         self.setType(type)
-        # elif self.type == "volt":
-        #   pass
 
     """def draw(self):
 
@@ -107,6 +106,10 @@ class Node():
             n.inLine.append(line)
             self.nodes[n] = len(self.adj) -1
 
+            if self not in n.nodes:
+                n.adj.append(self)
+                n.nodes[self] = len(n.adj) - 1
+
     def move(self, p2):
         Drawing.canvas.move(self.circle, p2[0] - self.p[0],  p2[1] - self.p[1])
 
@@ -128,16 +131,26 @@ class Node():
         Drawing.canvas.delete(self.circle)
 
         for line in self.inLine:
-            Drawing.canvas.delete(self.line)
+            Drawing.canvas.delete(line)
+
+        for line in self.outLine:
+            Drawing.canvas.delete(line)
 
         for node in self.adj:
             node.delete(self)
 
     def delete(self, n):
+        """
+        @type n: Node 
+        :param n: 
+        :return: None
+        """
+
         i = self.nodes[n]
         self.nodes[n] = None
 
         aux = []
+        auxOutLines = []
         auxDict = {}
         j = 0
         for node in self.adj:
@@ -148,6 +161,25 @@ class Node():
 
         self.adj = aux
         self.auxDict = auxDict
+
+class SubGraph():
+
+    def __init__(self):
+        self.nodes = []
+        self.varCount = 0
+
+    def addNode(self, n, outdegree):
+        """
+        
+        :param n: a node in the subgraph
+        :type n: Node
+        :param outdegree: 
+        :return: None
+        """
+
+        self.nodes.append(n)
+        if outdegree > 0:
+            self.varCount += outdegree - 1
 
 
 
@@ -180,13 +212,15 @@ class Graph():
 
         self.pos = (0,0)
 
+        self.subGraphs = []
+
 
     def initTK(self,height, width):
 
         self.root = Tk()
         self.root.title = "Data"
 
-        self.panel = Panel(self.root)
+        self.panel = Panel(self.root, self.toLine, self.toRes, self.toVoltage, self.toGround, self.delete)
 
         self.canvas = Canvas(self.root, width=width, height=height,relief='ridge',bd=1)
         self.canvas.grid(row=0,column=2)
@@ -196,36 +230,57 @@ class Graph():
         self.root.update()
         self.bindEvents()
 
+    def getSubGraphs(self):
+        visited = {}
+        queue = deque()
+        for s in self.nodes:
+            if s not in visited:
+                subGraph = SubGraph()
+                self.subGraphs.append(subGraph)
+            queue.append(s)
+
+            while len (queue) > 0:
+                node = queue.popleft()
+
+                for u in node.adj:
+                    queue.append(u)
+
+                subGraph.addNode(node, len(node.adj))
+
+                visited[node] = True
 
 
-    def updateNode(self):
+    def toLine(self):
+        if self.activeNode:
+            self.activeNode.setType("line")
 
+    def toRes(self):
         if self.activeNode:
 
-            self.activeNode.setType(self.typeTB.get())
+            self.activeNode.setType("res")
+            inVal = self.panel.valueTB.get()
 
-            if self.activeNode.type == "res":
-                if str.isnumeric(self.valueTB.get()):
-                    self.activeNode.value = int (self.valueTB.get())
-                else:
-                    self.activeNode.value = 0
+            if str.isnumeric(inVal):
+                self.activeNode.value = int(inVal)
 
-    def updateNodeInfo(self):
-
+    def toVoltage(self):
         if self.activeNode:
 
-            value = "0"
-            if self.activeNode.value is not None:
-                value = str( self.activeNode.value )
+            self.activeNode.setType("volt")
+            inVal = self.panel.valueVoltTB.get()
 
-            type = self.activeNode.type
+            if str.isnumeric(inVal):
+                self.activeNode.value = int(inVal)
 
-            self.nodeTypeLabel.config(text=type)
-            self.typeTB.delete(0, END)
-            self.typeTB.insert(0, type)
+    def toGround(self):
+        if self.activeNode:
+            self.activeNode.setType("ground")
+            self._groundNode = self.activeNode
 
-            self.valueTB.delete(0, END)
-            self.valueTB.insert(0, value )
+    def delete(self):
+        if self.activeNode:
+            self.activeNode.deleteMe()
+
 
     def bindEvents(self):
         self.root.bind("<Key>", self.key)
@@ -281,10 +336,10 @@ class Graph():
         if self.highlightNode:
             self.activeNode.unselected()
             self.activeNode = self.highlightNode
-            self.updateNodeInfo()
+            self.panel.update(self.activeNode)
             return True
 
-        self.updateNodeInfo()
+        self.panel.update(self.activeNode)
         return False
 
 
@@ -305,6 +360,9 @@ class Graph():
             self.searchHighlight(self.pos)
             self.root.update_idletasks()
             self.root.update()
+
+    def getNumVars(self):
+        pass
 
     def searchHighlight(self, pos):
 
@@ -329,9 +387,6 @@ class Graph():
 
         n = None
 
-        if self.activeNode:
-            self.activeNode.unselected()
-
         if self.adding_state == "r":
             n = Node(pos[0],pos[1], "res")
             self.nodes.append( n )
@@ -341,11 +396,12 @@ class Graph():
             self.nodes.append( n )
 
         if self.activeNode:
+            self.activeNode.unselected()
             self.activeNode.add(n)
 
         self.activeNode = n
 
-        self.updateNodeInfo()
+        self.panel.update(self.activeNode)
 
 if __name__ == "__main__":
     graph = Graph(700,700)

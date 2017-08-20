@@ -2,7 +2,7 @@ from tkinter import *
 
 class Panel():
 
-    def __init__(self, root, line, res, voltage, ground):
+    def __init__(self, root, line, res, voltage, ground, delete):
 
         ControlFrame = LabelFrame(root, text="Control Panel", relief=RIDGE)
         ControlFrame.grid(row=0, column=0)
@@ -52,14 +52,36 @@ class Panel():
         # end
 
         # row 3
-        lineButton = Button(NodeInfoFrame, text="Voltage", command=voltage)
-        lineButton.grid(row=3, column=0)
+        voltButton = Button(NodeInfoFrame, text="Voltage", command=voltage)
+        voltButton.grid(row=3, column=0)
+
+        self.valueVoltTB = Entry(NodeInfoFrame)
+        self.valueVoltTB.grid(row=3, column=1)
         # end
 
-        # row 3
-        lineButton = Button(NodeInfoFrame, text="Ground", command=ground)
-        lineButton.grid(row=3, column=0)
+        # row 4
+        groundButton = Button(NodeInfoFrame, text="Ground", command=ground)
+        groundButton.grid(row=4, column=0)
+        # end
+
+        # row 5
+        deleteButton = Button(NodeInfoFrame, text="Delete", command=delete)
+        deleteButton.grid(row=5, column=0)
         # end
 
         # end node info
+
+    def update(self, node):
+
+        self.nodeTypeLabel['text'] = node.type
+
+        self.valueTB.delete(0,END)
+        self.valueVoltTB.delete(0, END)
+
+        if node.value is not None:
+            if node.type == "res":
+                self.valueTB.insert(0, str(node.value) )
+            elif node.type == "volt":
+                self.valueVoltTB.insert(0, str(node.value) )
+
 
