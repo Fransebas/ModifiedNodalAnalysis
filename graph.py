@@ -1,10 +1,25 @@
 from graphics import *
 from grapher import *
-import sys, pygame
 from tkinter import *
+from tkpanel import *
 import os
 
-arrow = pygame.image.load("arrow.png")
+class Drawing():
+
+    canvas = None
+
+    @staticmethod
+    def init(canvas):
+        Drawing.canvas = canvas
+
+    @staticmethod
+    def circle(p, r, color):
+        return Drawing.canvas.create_oval(p[0]-r, p[1]-r, p[0]+r, p[1]+r, fill=color)
+
+    @staticmethod
+    def line(p1, p2, color = "#000000"):
+        return Drawing.canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=color)
+
 
 class Node():
     r = 10
@@ -17,11 +32,25 @@ class Node():
         self.r = 10
         self.highlight = False
 
+        self.inLineP = None # point of the line that enters
+        self.outLineP = None # point of the line that goes out
+        self.inLine = []
+        self.outLine = []
+
+        self.color = "#000000"
+
+        self.value = None
+
+        self.circle = Drawing.circle(self.p, self.r, self.color)
+
         self.setType(type)
         # elif self.type == "volt":
         #   pass
 
-    def draw(self, screen):
+    """def draw(self):
+
+
+
         pygame.draw.circle(screen, self.color, self.p, self.r, 0)
 
         if self.highlight:
@@ -35,36 +64,72 @@ class Node():
             v = (node.p[0] - self.p[0], node.p[1] - self.p[1])
             rotated = pygame.transform.rotate(arrow, -math.degrees(math.atan2(v[1], v[0])) )
             #p = ( node.p[0] - arrow_rect.width/2 ,  node.p[0] - arrow_rect.height/2)
-            screen.blit(rotated, node.p)
+            screen.blit(rotated, node.p)"""
 
     def setType(self, type):
-        self.color = pygame.Color(0, 255, 0, 255)
+
+        self.color = "#00ff00"
         self.type = type
+        self.value = None
 
         if self.type == "res":
+            self.value = 0
             self.r = 10
-            self.color = pygame.Color(255, 0, 0, 255)
+            self.color = "#ff0000"
 
         elif self.type == "line":
             self.r = 3
-            self.color = pygame.Color(0, 0, 0, 255)
+            self.color = "#000000"
 
         elif self.type == "ground":
             self.r = 10
-            self.color = pygame.Color(0, 255, 255, 255)
+            self.color = "#00ffff"
 
         elif self.type == "volt":
+            self.value = 0
             self.r = 10
-            self.color = pygame.Color(255, 255, 0, 255)
+            self.color = "#ffff00"
 
+        Drawing.canvas.itemconfig(self.circle, fill=self.color, width=0)
+
+    def selected(self, color="#ff00ff"):
+        Drawing.canvas.itemconfig(self.circle, outline=color, width=4)
+
+    def unselected(self):
+        Drawing.canvas.itemconfig(self.circle, width=0)
 
     def add(self, n):
+
         if n not in self.nodes:
             self.adj.append(n)
+            line = Drawing.line(self.p, n.p)
+            self.outLine.append(line)
+            n.inLine.append(line)
             self.nodes[n] = len(self.adj) -1
+
+    def move(self, p2):
+        Drawing.canvas.move(self.circle, p2[0] - self.p[0],  p2[1] - self.p[1])
+
+        self.p = p2
+
+        """ Check this method for the data tkinter uses"""
+        for line in self.inLine:
+            points = Drawing.canvas.coords(line)
+            points[2], points[3] = self.p[0], self.p[1]
+            Drawing.canvas.coords(line, points)
+
+        for line in self.outLine:
+            points = Drawing.canvas.coords(line)
+            points[0], points[1] = self.p[0], self.p[1]
+            Drawing.canvas.coords(line, points)
 
     def deleteMe(self):
         """ very very expensive """
+        Drawing.canvas.delete(self.circle)
+
+        for line in self.inLine:
+            Drawing.canvas.delete(self.line)
+
         for node in self.adj:
             node.delete(self)
 
@@ -111,183 +176,135 @@ class Graph():
         self._voltageNode = None
         self._groundNode = None
 
+        self._eventCountBuffer = 0
+
+        self.pos = (0,0)
+
 
     def initTK(self,height, width):
 
         self.root = Tk()
         self.root.title = "Data"
-        embed = Frame(self.root, width=640, height=480)
-        embed.grid(row=0, column=2)
-        playpausebutton = Button(self.root, text="Play/Pause")
-        playpausebutton.grid(row=1, column=2)
+
+        self.panel = Panel(self.root)
+
+        self.canvas = Canvas(self.root, width=width, height=height,relief='ridge',bd=1)
+        self.canvas.grid(row=0,column=2)
+
+        Drawing.init(self.canvas)
+
         self.root.update()
-
-        os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
-        print (str(embed.winfo_id()))
-        os.environ['SDL_VIDEODRIVER'] = 'windib'
-        pygame.display.init()
-        self.screen = pygame.display.set_mode((height, width))
-        pygame.display.flip()
+        self.bindEvents()
 
 
+
+    def updateNode(self):
+
+        if self.activeNode:
+
+            self.activeNode.setType(self.typeTB.get())
+
+            if self.activeNode.type == "res":
+                if str.isnumeric(self.valueTB.get()):
+                    self.activeNode.value = int (self.valueTB.get())
+                else:
+                    self.activeNode.value = 0
+
+    def updateNodeInfo(self):
+
+        if self.activeNode:
+
+            value = "0"
+            if self.activeNode.value is not None:
+                value = str( self.activeNode.value )
+
+            type = self.activeNode.type
+
+            self.nodeTypeLabel.config(text=type)
+            self.typeTB.delete(0, END)
+            self.typeTB.insert(0, type)
+
+            self.valueTB.delete(0, END)
+            self.valueTB.insert(0, value )
+
+    def bindEvents(self):
+        self.root.bind("<Key>", self.key)
+        self.canvas.bind("<Button-1>", self.mouse)
+        self.canvas.bind('<Motion>', self.getPos)
+        self.canvas.bind('<B1-Motion>', self.clickMove)
+        self.canvas.bind('<ButtonRelease-1>', self.clickRelease)
+
+    def clickMove(self,event):
+        self.pos = (event.x, event.y)
+        if self._selected:
+            self.activeNode.move(self.pos)
+
+    def getPos(self, event):
+        self.pos = (event.x, event.y)
+
+
+    def key(self,event):
+        print ( "pressed", repr(event.char) )
+
+        if self.state == "s": # select state
+            if event.char == "a":
+                self.state = "a"
+                return
+            elif event.char == "G":
+                pass
+
+        elif self.state == "a": # add state
+
+            if event.char == "s":
+                self.state = "s"
+                return
+            elif event.char == "l":
+                self.adding_state = "l"
+            elif event.char == "r":
+                self.adding_state = "r"
+
+    def clickRelease(self, event):
+        self._selected = False
+
+    def mouse(self,event):
+        pos = (event.x, event.y)
+
+        if self.state == "s": # select state
+            self._selected = self.select(pos)
+
+        elif self.state == "a": # add state
+            self.add(pos)
+
+
+    def select(self, pos):
+
+        if self.highlightNode:
+            self.activeNode.unselected()
+            self.activeNode = self.highlightNode
+            self.updateNodeInfo()
+            return True
+
+        self.updateNodeInfo()
+        return False
+
+
+    def add(self,pos):
+
+        if not self.highlightNode:
+            #self.searchHighlight(pos)
+            self.addNode( pos )
+        else:
+            self.activeNode.add(self.highlightNode)
+            self.activeNode = self.highlightNode
 
     def gameLoop(self):
-        white = pygame.Color(255,255,255)
-        while True: # game loop
-            #print(pygame.event.get())
-            events = pygame.event.get()
-            if len(events) > 0:
-                print (events)
 
-            self.screen.fill(white)
-            self.drawActive()
-            self.drawNodes()
-            if self.state == "a":
-                self.eventsAdd()
-            elif self.state == "s":
-                self.eventsSelect()
-
-            pygame.display.flip()
+        while True:
+            if self.activeNode:
+                self.activeNode.selected("#00ff00")
+            self.searchHighlight(self.pos)
+            self.root.update_idletasks()
             self.root.update()
-            #tk.update()
-
-
-    def eventsAdd(self):
-        events = pygame.event.get()
-        for event in events:
-
-            if event.type == pygame.QUIT:
-                pygame.quit();
-                sys.exit()
-
-            elif event.type == pygame.KEYDOWN:
-
-                if event.key == pygame.K_s:
-                    self.state = 's'
-
-                elif event.key == pygame.K_r:
-                    self.adding_state = 'r'
-
-                elif event.key == pygame.K_l:
-                    self.adding_state = 'l'
-
-                return
-
-            elif event.type == pygame.MOUSEBUTTONUP:
-                pos = pygame.mouse.get_pos()
-                if self.highlightNode:
-                    self.activeNode.add(self.highlightNode)
-                    self.activeNode = self.highlightNode
-                    return
-                else:
-                    self._selected = False
-                    self.addNode(pos)
-
-                return
-
-
-            elif event.type == pygame.MOUSEMOTION:
-                pos = pygame.mouse.get_pos()
-                self.searchHighlight(pos)
-
-
-    def eventsSelect(self):
-        events = pygame.event.get()
-
-        for event in events:
-
-            if event.type == pygame.QUIT:
-                pygame.quit();
-                sys.exit()
-
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_a:
-                    self.state = "a"
-
-                elif event.key == pygame.K_z:
-                    self.activeNode.deleteMe()
-                    self.nodes.pop()
-                    self.activeNode = self.nodes[-1]
-
-                elif event.key == pygame.K_g:
-                    if self._groundNode:
-                        self._groundNode.setType( "line" )
-
-                    self._groundNode = self.activeNode
-                    self._groundNode.setType( "ground" )
-
-                elif event.key == pygame.K_v:
-                    if self._voltageNode:
-                        self._voltageNode.setType( "line" )
-
-                    self._voltageNode = self.activeNode
-                    self._voltageNode.setType( "volt" )
-
-
-
-            elif event.type == pygame.MOUSEBUTTONUP:
-                self._selected = False
-
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-
-                if self.highlightNode:
-                    self._selected = True
-                    self.highlightNode.p = pygame.mouse.get_pos()
-                    self.activeNode = self.highlightNode
-
-            elif event.type == pygame.MOUSEMOTION:
-
-                if self._selected:
-                    self.highlightNode.p = pygame.mouse.get_pos()
-                else:
-                    pos = pygame.mouse.get_pos()
-                    self.searchHighlight(pos)
-
-    def checkEvent(self):
-        events = pygame.event.get()
-
-        for event in events:
-
-            if event.type == pygame.QUIT:
-                pygame.quit();
-                sys.exit()
-
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_r:
-                    """ to state ressistance """
-                    self.state = "r"
-
-                if event.key == pygame.K_l:
-                    self.state = "l"
-
-                if event.key == pygame.K_z:
-                    self.activeNode.deleteMe()
-                    self.nodes.pop()
-                    self.activeNode = self.nodes[-1]
-
-            elif event.type == pygame.MOUSEBUTTONUP:
-                self._selected = False
-                pos = pygame.mouse.get_pos()
-                if not self.highlightNode:
-                    self.addNode(pos)
-
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-
-                if self.highlightNode:
-                    self._selected = True
-                    self.highlightNode.p = pygame.mouse.get_pos()
-                    self.activeNode = self.highlightNode
-
-            elif event.type == pygame.MOUSEMOTION:
-
-                if self._selected:
-                    self.highlightNode.p = pygame.mouse.get_pos()
-                else:
-                    pos = pygame.mouse.get_pos()
-                    self.searchHighlight(pos)
-
-
-
 
     def searchHighlight(self, pos):
 
@@ -296,24 +313,24 @@ class Graph():
                 if self.distSqrt(node.p, pos) < self._dist:
                     self.highlightNode = node
                     self.highlightNode.highlight = True
+                    self.highlightNode.selected()
                     return
 
             if self.highlightNode:
                 self.highlightNode.highlight = False
+                self.highlightNode.unselected()
                 self.highlightNode = None
 
 
     def distSqrt(self, p1, p2):
         return ((p1[0] - p2[0])**2) + ((p1[1] - p2[1])**2)
 
-    def drawNodes(self):
-        for n in self.nodes:
-            n.draw(self.screen)
-
-
     def addNode(self, pos):
 
         n = None
+
+        if self.activeNode:
+            self.activeNode.unselected()
 
         if self.adding_state == "r":
             n = Node(pos[0],pos[1], "res")
@@ -325,16 +342,12 @@ class Graph():
 
         if self.activeNode:
             self.activeNode.add(n)
+
         self.activeNode = n
 
-    def drawActive(self):
-
-        if self.activeNode:
-            pygame.draw.circle(self.screen, pygame.Color(0,0,255,255), self.activeNode.p, 15)
+        self.updateNodeInfo()
 
 if __name__ == "__main__":
-    pygame.init()
     graph = Graph(700,700)
-    arrow_rect = arrow.get_rect()
 
     graph.gameLoop()
