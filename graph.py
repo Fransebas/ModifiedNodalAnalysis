@@ -5,6 +5,7 @@ from tkpanel import *
 import numpy as np
 from collections import deque
 import  Edge
+from Node import Node
 
 class Drawing():
 
@@ -12,7 +13,14 @@ class Drawing():
 
     @staticmethod
     def init(canvas):
+        """
+        
+        :param canvas: the canvas where is the graph
+        :type canvas: Canvas
+        :return: 
+        """
         Drawing.canvas = canvas
+
 
     @staticmethod
     def circle(p, r, color):
@@ -22,137 +30,6 @@ class Drawing():
     def line(p1, p2, color = "#000000"):
         return Drawing.canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=color)
 
-
-class Node():
-    r = 10
-    def __init__(self, x, y, type = "line"):
-        self.p = (x,y)
-        self.type = type
-        self.adj = []
-        self.nodes = {}
-        self.r = 10
-        self.highlight = False
-        self.inLineP = None # point of the line that enters
-        self.outLineP = None # point of the line that goes out
-        self.inLine = []
-        self.outLine = []
-
-        self.edges = []
-
-        self.color = "#000000"
-
-        self.value = None
-
-        self.circle = Drawing.circle(self.p, self.r, self.color)
-
-        self.setType(type)
-
-    def setType(self, type):
-
-        self.color = "#00ff00"
-        self.type = type
-        self.value = None
-
-        if self.type == "res":
-            self.value = 0
-            self.r = 10
-            self.color = "#ff0000"
-
-        elif self.type == "line":
-            self.r = 3
-            self.color = "#000000"
-
-        elif self.type == "ground":
-            self.r = 10
-            self.color = "#00ffff"
-
-        elif self.type == "volt":
-            self.value = 0
-            self.r = 10
-            self.color = "#ffff00"
-
-        Drawing.canvas.itemconfig(self.circle, fill=self.color, width=0)
-
-    def selected(self, color="#ff00ff"):
-        Drawing.canvas.itemconfig(self.circle, outline=color, width=4)
-
-    def unselected(self):
-        Drawing.canvas.itemconfig(self.circle, width=0)
-
-    def add(self, n):
-
-        if n not in self.nodes:
-            self.adj.append(n)
-            line = Drawing.line(self.p, n.p)
-            self.outLine.append(line)
-            n.inLine.append(line)
-            self.nodes[n] = len(self.adj) -1
-
-            if self not in n.nodes:
-                n.adj.append(self)
-                n.nodes[self] = len(n.adj) - 1
-
-    def move(self, p2):
-        Drawing.canvas.move(self.circle, p2[0] - self.p[0],  p2[1] - self.p[1])
-
-        self.p = p2
-
-        """ Check this method for the data tkinter uses"""
-        for line in self.inLine:
-            points = Drawing.canvas.coords(line)
-            points[2], points[3] = self.p[0], self.p[1]
-            Drawing.canvas.coords(line, points)
-
-        for line in self.outLine:
-            points = Drawing.canvas.coords(line)
-            points[0], points[1] = self.p[0], self.p[1]
-            Drawing.canvas.coords(line, points)
-
-    def deleteMe(self):
-        """ very very expensive """
-        Drawing.canvas.delete(self.circle)
-
-        for line in self.inLine:
-            Drawing.canvas.delete(line)
-
-        for line in self.outLine:
-            Drawing.canvas.delete(line)
-
-        for node in self.adj:
-            node.delete(self)
-
-    def delete(self, n):
-        """
-        :param n: node to delete from self
-        :type n: Node
-        :return: None
-        """
-
-        i = self.nodes[n]
-        self.nodes[n] = None
-
-        aux = []
-        auxOutLines = []
-        auxDict = {}
-        j = 0
-        for node in self.adj:
-            if i == j: continue
-            aux.append(node)
-            auxDict[n] = j
-            j += 1
-
-        self.adj = aux
-        self.auxDict = auxDict
-
-        def __eq__(self, b):
-            """
-            
-            :param self: self node
-            :param b: another node
-            :type b: Node 
-            :return: Boolean
-            """
-            return self.p == b.p
 
 class SubGraph():
 
@@ -173,6 +50,9 @@ class SubGraph():
         self.nodes.append(n)
         if outdegree > 0:
             self.varCount += outdegree - 1
+
+    def __str__(self):
+        return str(  [str(node) for node in self.nodes] )
 
 
 
@@ -225,9 +105,16 @@ class Graph():
         self.canvas.grid(row=0,column=1)
 
         Drawing.init(self.canvas)
+        Edge.Edge.init(Drawing)
+        Node.init(Drawing)
 
         self.root.update()
         self.bindEvents()
+
+    def setCurrents(self):
+
+        for graph in self.subGraphs:
+            pass
 
     def getSubGraphs(self):
         """ makes all the different graphs"""
@@ -249,17 +136,17 @@ class Graph():
             while len (queue) > 0:
                 outDegree = 0
                 node = queue.popleft()
+                if node in visited:
+                    continue
 
                 for u in node.adj:
                     if u not in visited:
                         outDegree += 1
                         queue.append(u)
 
+
                 subGraph.addNode(node, outDegree)
                 visited[node] = True
-
-        print ("The number of subgraphs are", len(self.subGraphs) )
-
 
     def toLine(self):
         if self.activeNode:
@@ -323,7 +210,6 @@ class Graph():
 
 
     def key(self,event):
-        print ( "pressed", repr(event.char) )
 
         if self.state == "s": # select state
             if event.char == "a":
@@ -374,6 +260,7 @@ class Graph():
             self.addNode( pos )
         else:
             self.activeNode.add(self.highlightNode)
+            self.activeNode.unselected()
             self.activeNode = self.highlightNode
 
     def gameLoop(self):
