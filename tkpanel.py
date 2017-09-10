@@ -1,8 +1,19 @@
 from tkinter import *
 
+import States
+
 class Panel():
 
-    def __init__(self, root, line, res, voltage, ground, delete, subGraphs = None):
+    def __init__(self, graph, root, states, subGraphs = None):
+        """
+        
+        :param root: 
+        :param states:
+        :type states: States.State
+        :param subGraphs: 
+        """
+        self.states = states
+        self.states.panel = self
 
         ControlFrame = LabelFrame(root, text="Control Panel", relief=RIDGE)
         ControlFrame.grid(row=0, column=0)
@@ -19,6 +30,16 @@ class Panel():
 
         self.changeStateLabel = Label(StateFrame, text="Add", relief=RIDGE)
         self.changeStateLabel.grid(row=0, column=1)
+
+
+        cableButton = Button(StateFrame, text="add cable", command=states.toggleCableStateButton)
+        cableButton.grid(row=1, column=0)
+
+        self.cableState = IntVar()
+        self.cableCheckBox =  Checkbutton(StateFrame, text="cable", variable=self.cableState, onvalue=1, offvalue=0)
+        self.cableCheckBox.grid(row=1, column=1)
+
+
 
         # end
 
@@ -39,12 +60,12 @@ class Panel():
         # end
 
         # row 1
-        lineButton = Button(NodeInfoFrame, text="Line", command=line)
+        lineButton = Button(NodeInfoFrame, text="Line", command=states.toLine)
         lineButton.grid(row=1, column=0)
         # end
 
         # row 2
-        resButton = Button(NodeInfoFrame, text="Res", command=res)
+        resButton = Button(NodeInfoFrame, text="Res", command=states.toRes)
         resButton.grid(row=2, column=0)
 
         self.valueTB = Entry(NodeInfoFrame)
@@ -52,7 +73,7 @@ class Panel():
         # end
 
         # row 3
-        voltButton = Button(NodeInfoFrame, text="Voltage", command=voltage)
+        voltButton = Button(NodeInfoFrame, text="Voltage", command=states.toVoltage)
         voltButton.grid(row=3, column=0)
 
         self.valueVoltTB = Entry(NodeInfoFrame)
@@ -60,12 +81,12 @@ class Panel():
         # end
 
         # row 4
-        groundButton = Button(NodeInfoFrame, text="Ground", command=ground)
+        groundButton = Button(NodeInfoFrame, text="Ground", command=states.toGround)
         groundButton.grid(row=4, column=0)
         # end
 
         # row 5
-        deleteButton = Button(NodeInfoFrame, text="Delete", command=delete)
+        deleteButton = Button(NodeInfoFrame, text="Delete", command=states.delete)
         deleteButton.grid(row=5, column=0)
         # end
 
@@ -76,7 +97,7 @@ class Panel():
 
         # Multimeter Frame
 
-        groundButton = Button(MutltimeterFrame, text="Make SubGraphs", command=subGraphs)
+        groundButton = Button(MutltimeterFrame, text="Make SubGraphs", command=graph.solveGraph)
         groundButton.grid(row=0, column=0)
 
         # end Multimeter Frame

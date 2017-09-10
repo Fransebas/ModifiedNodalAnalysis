@@ -6,6 +6,11 @@ import numpy as np
 from collections import deque
 import  Edge
 from Node import Node
+from GraphObjects import Power, Line, Resistance
+
+from MNA import MNA
+
+import States
 
 class Drawing():
 
@@ -59,19 +64,19 @@ class SubGraph():
 class Graph():
 
     def __init__(self, height, width):
+        self.stateModule = States.State(self)
+
         self.initTK(height, width)
 
         self.state = "a"
-        self.adding_state = "l"
+
         """
-            S - select nodes
-                G - make node ground
-                V - mke node voltage
-            A - add nodes
-                l - line nodes
-                R - resistance
-            C - check
+         state s - select and add lines
         """
+
+        self.selectedObject = Power(self)
+        self.selectedNode = None
+
         self.nodes = []
         self.activeNode = None
         self.highlightNode = None
@@ -88,17 +93,17 @@ class Graph():
         self.subGraphs = []
 
 
+
+
     def initTK(self,height, width):
 
         self.root = Tk()
         self.root.title = "Data"
 
-        self.panel = Panel(self.root,
-                           self.toLine,
-                           self.toRes,
-                           self.toVoltage,
-                           self.toGround,
-                           self.delete,
+        self.cableState = IntVar()
+        self.panel = Panel(self,
+                           self.root,
+                           self.stateModule,
                            subGraphs=self.getSubGraphs)
 
         self.canvas = Canvas(self.root, width=width, height=height,relief='ridge',bd=1)
@@ -148,126 +153,75 @@ class Graph():
                 subGraph.addNode(node, outDegree)
                 visited[node] = True
 
-    def toLine(self):
-        if self.activeNode:
-            self.activeNode.setType("line")
-
-    def toRes(self):
-        if self.activeNode:
-
-            self.activeNode.setType("res")
-            inVal = self.panel.valueTB.get()
-
-            if str.isnumeric(inVal):
-                self.activeNode.value = int(inVal)
-
-    def toVoltage(self):
-        if self.activeNode:
-
-            self.activeNode.setType("volt")
-            inVal = self.panel.valueVoltTB.get()
-
-            if str.isnumeric(inVal):
-                self.activeNode.value = int(inVal)
-
-    def toGround(self):
-        if self.activeNode:
-            self.activeNode.setType("ground")
-            self._groundNode = self.activeNode
-
-    def delete(self):
-        if self.activeNode:
-            self.activeNode.deleteMe()
-            newList = []
-            for node in self.nodes:
-                if node == self.activeNode:
-                    continue
-                newList.append(node)
-
-            self.nodes = newList
-
-            if len(self.nodes) > 0:
-                self.activeNode = self.nodes[-1]
-                self.panel.update(self.activeNode)
-            else:
-                self.activeNode = None
-
-
     def bindEvents(self):
         self.root.bind("<Key>", self.key)
-        self.canvas.bind("<Button-1>", self.mouse)
-        self.canvas.bind('<Motion>', self.getPos)
+        self.canvas.bind("<Button-1>", self.click) # click
+        self.canvas.bind('<Motion>', self.getPos) # mouse move
         self.canvas.bind('<B1-Motion>', self.clickMove)
         self.canvas.bind('<ButtonRelease-1>', self.clickRelease)
 
     def clickMove(self,event):
         self.pos = (event.x, event.y)
+
         if self._selected:
             self.activeNode.move(self.pos)
 
     def getPos(self, event):
         self.pos = (event.x, event.y)
 
+        if self.selectedObject:
+            self.selectedObject.move(self.pos)
+
 
     def key(self,event):
 
-        if self.state == "s": # select state
-            if event.char == "a":
-                self.state = "a"
-                return
-            elif event.char == "G":
-                pass
 
-        elif self.state == "a": # add state
+        if event.char == "r":
+            if self.selectedObject:
+                self.selectedObject.rotate()
 
-            if event.char == "s":
-                self.state = "s"
-                return
-            elif event.char == "l":
-                self.adding_state = "l"
-            elif event.char == "r":
-                self.adding_state = "r"
+        #elif event.char == "s":
+
+        return
 
     def clickRelease(self, event):
-        self._selected = False
+        pass
 
-    def mouse(self,event):
+    def click(self,event):
         pos = (event.x, event.y)
 
         if self.state == "s": # select state
-            self._selected = self.select(pos)
+            self.select(pos)
 
         elif self.state == "a": # add state
-            self.add(pos)
+            self.add()
 
 
     def select(self, pos):
-
+        print("hi")
         if self.highlightNode:
-            self.activeNode.unselected()
-            self.activeNode = self.highlightNode
-            self.panel.update(self.activeNode)
-            return True
+            print("double hi")
+            if self.highlightNode.type == Node.line:
+                self.highlightNode.selected(self)
+                return True
 
-        self.panel.update(self.activeNode)
+            else:
+                self.panel.update(self.highlightNode)
+
         return False
 
 
-    def add(self,pos):
+    def add(self):
+        if self.selectedObject:
+             self.selectedObject.add()
 
-        if not self.highlightNode:
-            #self.searchHighlight(pos)
-            self.addNode( pos )
-        else:
-            self.activeNode.add(self.highlightNode)
-            self.activeNode.unselected()
-            self.activeNode = self.highlightNode
+        self.selectedObject = None
 
     def gameLoop(self):
 
         while True:
-            if self.activeNode:
-                self.activeNode.selected("#00ff00")
+            #if self.activeNode:
+            #    self.activeNode.selected("#00ff00")
             self.searchHighlight(self.pos)
             self.root.update_idletasks()
             self.root.update()
@@ -277,42 +231,28 @@ class Graph():
 
     def searchHighlight(self, pos):
 
-        if not self._selected:
-            for node in self.nodes:
-                if self.distSqrt(node.p, pos) < self._dist:
-                    self.highlightNode = node
-                    self.highlightNode.highlight = True
-                    self.highlightNode.selected()
-                    return
+        if self.highlightNode:
+            self.highlightNode.unhighlight()
+            self.highlightNode = None
 
-            if self.highlightNode:
-                self.highlightNode.highlight = False
-                self.highlightNode.unselected()
-                self.highlightNode = None
+        for node in self.nodes:
+            if  self.distSqrt(node.p, pos) < self._dist:
+                node.highlight(self)
+                return
+
+
 
 
     def distSqrt(self, p1, p2):
         return ((p1[0] - p2[0])**2) + ((p1[1] - p2[1])**2)
 
-    def addNode(self, pos):
+    def addNode(self):
+        pass
 
-        n = None
 
-        if self.adding_state == "r":
-            n = Node(pos[0],pos[1], "res")
-            self.nodes.append( n )
-
-        elif self.adding_state == "l":
-            n = Node(pos[0],pos[1], "line")
-            self.nodes.append( n )
-
-        if self.activeNode:
-            self.activeNode.unselected()
-            self.activeNode.add(n)
-
-        self.activeNode = n
-
-        self.panel.update(self.activeNode)
+    def solveGraph(self):
+        MNAgraph = MNA(self)
+        MNAgraph.solve()
 
 if __name__ == "__main__":
     graph = Graph(700,700)

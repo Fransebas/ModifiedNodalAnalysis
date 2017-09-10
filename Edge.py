@@ -1,5 +1,5 @@
 from tkinter import *
-from graph import Drawing
+import graph
 from Node import Node
 
 class Edge():
@@ -10,7 +10,7 @@ class Edge():
     def init(Drawing):
         """ 
         :param Drawing:
-        :type Drawing: Drawing
+        :type Drawing: graph.Drawing
         """
         Edge.Drawing = Drawing
 
@@ -22,7 +22,7 @@ class Edge():
         :param n2:
         :type n2: Node
         :param Drawing:
-        :type Drawing: Drawing
+        :type Drawing: graph.Drawing
         """
         self.n1 = n1
         self.n2 = n2
