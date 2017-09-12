@@ -1,4 +1,4 @@
-<h1> Modified Nodal Analysis <h1>
+<h1> Modified Nodal Analysis </h1>
 
 <p> The main code is graph.py, run with `python3 graph.py`
 
