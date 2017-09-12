@@ -1,6 +1,6 @@
 <h1> Modified Nodal Analysis </h1>
 
-<p> The main code is graph.py, run with ```python3 graph.py```
+<p> The main code is graph.py, run with `python3 graph.py`
 
 Dependencies:
   1. numpy https://www.scipy.org/scipylib/download.html
