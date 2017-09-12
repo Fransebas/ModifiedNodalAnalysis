@@ -4,7 +4,7 @@ import States
 
 class Panel():
 
-    def __init__(self, graph, root, states, subGraphs = None):
+    def __init__(self, graph, root, states, multimeter ,subGraphs = None):
         """
         
         :param root: 
@@ -23,7 +23,7 @@ class Panel():
         StateFrame = LabelFrame(ControlFrame, text="State Panel", relief=RIDGE)
         StateFrame.grid(row=0, column=0)
 
-        # State Frame
+            # State Frame
 
         SateLabel = Label(StateFrame, text="State", relief=RIDGE)
         SateLabel.grid(row=0, column=0)
@@ -41,15 +41,15 @@ class Panel():
 
 
 
-        # end
+            # end
 
         NodeInfoFrame = LabelFrame(ControlFrame, text="Node", relief=RIDGE)
         NodeInfoFrame.grid(row=1, column=0)
 
 
-        # Node info
+            # Node info
 
-        # row 0
+                # row 0
 
         typeLabel = Label(NodeInfoFrame, text="type", relief=RIDGE)
         typeLabel.grid(row=0, column=0)
@@ -57,48 +57,69 @@ class Panel():
         self.nodeTypeLabel = Label(NodeInfoFrame, text="type text", relief=RIDGE)
         self.nodeTypeLabel.grid(row=0, column=1)
 
-        # end
+                # end
 
-        # row 1
+                # row 1
         lineButton = Button(NodeInfoFrame, text="Line", command=states.toLine)
         lineButton.grid(row=1, column=0)
-        # end
+                # end
 
-        # row 2
+                # row 2
         resButton = Button(NodeInfoFrame, text="Res", command=states.toRes)
         resButton.grid(row=2, column=0)
 
         self.valueTB = Entry(NodeInfoFrame)
         self.valueTB.grid(row=2, column=1)
-        # end
+                # end
 
-        # row 3
+                # row 3
         voltButton = Button(NodeInfoFrame, text="Voltage", command=states.toVoltage)
         voltButton.grid(row=3, column=0)
 
         self.valueVoltTB = Entry(NodeInfoFrame)
         self.valueVoltTB.grid(row=3, column=1)
-        # end
+                # end
 
-        # row 4
+                # row 4
         groundButton = Button(NodeInfoFrame, text="Ground", command=states.toGround)
         groundButton.grid(row=4, column=0)
-        # end
+                # end
 
-        # row 5
+                # row 5
         deleteButton = Button(NodeInfoFrame, text="Delete", command=states.delete)
         deleteButton.grid(row=5, column=0)
-        # end
+                # end
 
-        # end node info
+            # end node info
 
         MutltimeterFrame = LabelFrame(root, text="Multimeter", relief=RIDGE)
         MutltimeterFrame.grid(row=0, column=2)
 
         # Multimeter Frame
 
-        groundButton = Button(MutltimeterFrame, text="Make SubGraphs", command=graph.solveGraph)
-        groundButton.grid(row=0, column=0)
+        ScreenFrame = LabelFrame(MutltimeterFrame, text="Screen", relief=RIDGE)
+        ScreenFrame.grid(row=0, column=0)
+
+            # ScreenFrame
+
+        self.multimeterModeLabel = Label(ScreenFrame, text="voltage", relief=RIDGE)
+        self.multimeterModeLabel.grid(row=0, column=0)
+
+        self.multimeterValueLabel = Label(ScreenFrame, text="0", relief=RIDGE)
+        self.multimeterValueLabel.grid(row=0, column=1)
+
+
+            # End Screen Frame
+
+        groundButton = Button(MutltimeterFrame, text="Make", command=graph.solveGraph)
+        groundButton.grid(row=1, column=0)
+
+        possButton = Button(MutltimeterFrame, text="+", command=multimeter.setStatePos)
+        possButton.grid(row=2, column=0)
+
+        neggButton = Button(MutltimeterFrame, text="-", command=multimeter.setStateNegg)
+        neggButton.grid(row=2, column=1)
+
 
         # end Multimeter Frame
 
@@ -114,5 +135,9 @@ class Panel():
                 self.valueTB.insert(0, str(node.value) )
             elif node.type == "volt":
                 self.valueVoltTB.insert(0, str(node.value) )
+
+    def mutimeterShowVolt(self, val):
+        self.multimeterValueLabel.config(text=str(val))
+
 
 

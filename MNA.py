@@ -225,9 +225,10 @@ class MNA():
 
         print("R = ", r)
 
-
+        ground = self.nodes.pop()
         for node in self.nodes:
-            node.volt = r[node.i - 1]
+            node.volt = r[node.i ]
+        self.nodes.append(ground)
 
 
     def makeZ(self):
@@ -237,7 +238,7 @@ class MNA():
 
         for t in self.voltNodes:
             node, i = t
-            z[len(self.nodes)- 1 + i] = node.volt
+            z[len(self.nodes)- 1 + i] = -node.volt
 
         return z
 

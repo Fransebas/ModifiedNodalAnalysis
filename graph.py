@@ -7,10 +7,9 @@ from collections import deque
 import  Edge
 from Node import Node
 from GraphObjects import Power, Line, Resistance
-
 from MNA import MNA
-
 import States
+import Multimeter
 
 class Drawing():
 
@@ -96,20 +95,27 @@ class Graph():
 
 
     def initTK(self,height, width):
-
         self.root = Tk()
         self.root.title = "Data"
+        self.canvas = Canvas(self.root, width=width, height=height, relief='ridge', bd=1)
+        Drawing.init(self.canvas)
+        self.multimeter = Multimeter.Multimeter(Drawing, self)
 
         self.cableState = IntVar()
         self.panel = Panel(self,
                            self.root,
                            self.stateModule,
+                           self.multimeter,
                            subGraphs=self.getSubGraphs)
 
-        self.canvas = Canvas(self.root, width=width, height=height,relief='ridge',bd=1)
+        self.multimeter.intView(Drawing, self.panel)
+
+
         self.canvas.grid(row=0,column=1)
 
-        Drawing.init(self.canvas)
+
+
+
         Edge.Edge.init(Drawing)
         Node.init(Drawing)
 
@@ -172,6 +178,10 @@ class Graph():
         if self.selectedObject:
             self.selectedObject.move(self.pos)
 
+        self.multimeter.move(self.pos)
+
+
+
 
     def key(self,event):
 
@@ -195,6 +205,9 @@ class Graph():
 
         elif self.state == "a": # add state
             self.add()
+
+
+        self.multimeter.click(self.highlightNode)
 
 
     def select(self, pos):
@@ -253,6 +266,7 @@ class Graph():
     def solveGraph(self):
         MNAgraph = MNA(self)
         MNAgraph.solve()
+        self.multimeter.calculateVolt()
 
 if __name__ == "__main__":
     graph = Graph(700,700)
