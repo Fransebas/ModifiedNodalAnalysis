@@ -1,10 +1,10 @@
 <h1> Modified Nodal Analysis <h1>
 
-The main code is graph.py, run with `python3 graph.py`
+<p> The main code is graph.py, run with `python3 graph.py`
 
 Dependencies:
   1. numpy https://www.scipy.org/scipylib/download.html
-  2. tkinter https://wiki.python.org/moin/TkInter
+  2. tkinter https://wiki.python.org/moin/TkInter</p> 
   
   
 <h2> Early stage </h2> 
